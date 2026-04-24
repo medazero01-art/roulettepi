@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nucleo Mind</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+        @import url('https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap');
+
+        :root {
+            --bg-color: #180f2a;
+            --text-primary: #fbf6e9;
+            --accent: #d19fff;
+            --font-family: 'Satoshi', 'DM Sans', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            overflow: hidden;
+            display: block;
+        }
+
+        #bg-canvas, #wheel-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+        #wheel-canvas {
+            z-index: 1;
+        }
+
+        .layout {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            display: flex;
+            pointer-events: none;
+            overflow-y: auto; /* Scrollable natively if needed vertically */
+        }
+
+        .left-panel {
+            pointer-events: auto;
+            width: 30%;
+            min-width: 400px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        
+        @media (max-width: 768px) {
+            .layout {
+                flex-direction: column;
+                pointer-events: auto;
+            }
+            .left-panel {
+                width: 100%;
+                min-width: 0;
+                padding: 1.5rem;
+            }
+            h1 { font-size: 1.8rem !important; }
+            input, button.add-btn { font-size: 0.9rem !important; }
+            .subtitle { margin-bottom: 1.5rem !important; }
+        }
+
+        .glass-card {
+            background: rgba(209, 159, 255, 0.07);
+            border: 1px solid var(--accent);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        h1 {
+            font-weight: 900;
+            font-size: 2.2rem;
+            line-height: 1.1;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+            text-shadow: 0 0 15px rgba(209, 159, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-variant: small-caps;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--accent);
+            opacity: 0.7;
+            margin: 0 0 2.5rem 0;
+            letter-spacing: 1px;
+        }
+
+        .controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 2rem;
+            flex-shrink: 0;
+        }
+
+        input {
+            flex-grow: 1;
+            background: rgba(24, 15, 42, 0.6);
+            border: 1px solid rgba(209, 159, 255, 0.3);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 8px rgba(209, 159, 255, 0.2);
+        }
+
+        button.add-btn {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: var(--font-family);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        button.add-btn:hover {
+            background: rgba(209, 159, 255, 0.15);
+            box-shadow: 0 0 12px rgba(209, 159, 255, 0.3);
+        }
+
+        .team-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 10px;
+        }
+
+        .team-list::-webkit-scrollbar { width: 4px; }
+        .team-list::-webkit-scrollbar-track { background: rgba(209, 159, 255, 0.05); border-radius: 4px; }
+        .team-list::-webkit-scrollbar-thumb { background: rgba(209, 159, 255, 0.3); border-radius: 4px; }
+
+        .team-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--accent);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 0 6px 6px 0;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .team-name { font-weight: 500; font-size: 1.05rem; }
+
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: rgba(209, 159, 255, 0.5);
+            cursor: pointer;
+            font-size: 1.2rem;
+            line-height: 1;
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+        .remove-btn:hover { color: #ff4757; }
+
+        .action-button {
+            background: var(--accent);
+            color: var(--bg-color);
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-family: var(--font-family);
+            font-weight: 900;
+            font-size: 1.5rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(209, 159, 255, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+        .action-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 35px rgba(209, 159, 255, 0.7);
+        }
+        .action-button:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+        .action-button:disabled {
+            background: rgba(209, 159, 255, 0.15);
+            color: rgba(24, 15, 42, 0.5);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none !important;
+        }
+
+        /* Pulse glow for standalone buttons */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 20px rgba(209, 159, 255, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(209, 159, 255, 0.8); }
+            100% { box-shadow: 0 0 20px rgba(209, 159, 255, 0.4); }
+        }
+        .action-button:not(:disabled) { animation: pulseGlow 3s infinite; }
+
+        .action-button.main-spin {
+            position: fixed;
+            bottom: 6%;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 100;
+        }
+        .action-button.main-spin.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(24, 15, 42, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        
+        .modal-content {
+            position: relative;
+            width: 500px; height: 500px;
+            display: flex;
+            justify-content: center; align-items: center;
+            transform: scale(0.5);
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+
+        .blob-bg {
+            position: absolute;
+            width: 150%; height: 150%;
+            z-index: -1;
+            animation: blobSlowRotate 20s linear infinite;
+        }
+        @keyframes blobSlowRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .modal-text { text-align: center; z-index: 1; color: var(--bg-color); }
+        .modal-text h2 { font-weight: 900; font-size: 3.5rem; margin: 0; line-height: 1.1; word-wrap: break-word; max-width: 400px; }
+        .winner-subtitle { font-variant: small-caps; font-weight: 700; font-size: 1.2rem; letter-spacing: 0.3em; margin: 1rem 0 2rem; opacity: 0.8; }
+        .close-btn { background: var(--bg-color); color: var(--accent); border: 2px solid var(--bg-color); padding: 12px 30px; border-radius: 8px; font-family: var(--font-family); font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        .close-btn:hover { background: transparent; color: var(--bg-color); }
+    </style>
+</head>
+<body>
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="wheel-canvas"></canvas>
+
+    <div class="layout" id="ui-layout">
+        <div class="left-panel" id="left-panel">
+            <div class="glass-card" id="glass-card">
+                <h1 id="main-title">NUCLEO MIND</h1>
+                <p class="subtitle" id="main-subtitle">Where The Lab Meets The Algorithm</p>
+                
+                <div class="controls-wrapper" id="controls-wrapper">
+                    <div class="input-group">
+                        <input type="text" id="team-input" placeholder="Enter team name..." autocomplete="off">
+                        <button class="add-btn" id="add-team-btn">Add</button>
+                    </div>
+                    <div class="team-list" id="team-list"></div>
+                </div>
+                
+                <button class="action-button" id="go-to-wheel-btn">GO TO WHEEL</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="action-button main-spin" id="spin-btn">SPIN</button>
+
+    <div id="win-modal" class="modal-overlay">
+        <div class="modal-content">
+            <svg class="blob-bg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <path fill="rgba(209, 159, 255, 0.9)" d="M44.7,-76.4C58.8,-69.2,71.8,-59.1,81.4,-46.3C91,-33.5,97.2,-18.1,98.6,-2.4C100,13.3,96.6,29.3,88.1,43.3C79.6,57.3,66,69.5,50.7,78.2C35.4,86.9,18.4,92.1,1.1,90.3C-16.2,88.5,-32.4,79.7,-46.7,69C-61,58.3,-73.4,45.8,-82.2,30.7C-91,15.6,-96.2,-2.1,-93.6,-18.6C-91,-35.1,-80.7,-50.4,-67.2,-58.5C-53.7,-66.6,-37,-67.5,-22.4,-70.6C-7.8,-73.7,4.7,-79.1,18.3,-78.9C31.9,-78.7,46.5,-72.9,44.7,-76.4Z" transform="translate(100 100)" />
+            </svg>
+            <div class="modal-text">
+                <h2 id="winner-name">TEAM NAME</h2>
+                <p class="winner-subtitle">SELECTED</p>
+                <button class="close-btn" id="close-modal-btn">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data & UI Elements
+        let teams = JSON.parse(localStorage.getItem('roulette_teams')) || [];
+        
+        const palette = [
+            { bg: '#834dfb', text: '#fbf6e9' },
+            { bg: '#efff74', text: '#180f2a' },
+            { bg: '#f7d100', text: '#180f2a' },
+            { bg: '#00c156', text: '#fbf6e9' },
+            { bg: '#ff7100', text: '#180f2a' }
+        ];
+
+        const teamInput = document.getElementById('team-input');
+        const addTeamBtn = document.getElementById('add-team-btn');
+        const teamList = document.getElementById('team-list');
+        const goToWheelBtn = document.getElementById('go-to-wheel-btn');
+        const spinBtn = document.getElementById('spin-btn');
+        const leftPanel = document.getElementById('left-panel');
+        const mainTitle = document.getElementById('main-title');
+        const mainSubtitle = document.getElementById('main-subtitle');
+        
+        const winModal = document.getElementById('win-modal');
+        const winnerNameEl = document.getElementById('winner-name');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        
+        const bgCanvas = document.getElementById('bg-canvas');
+        const wheelCanvas = document.getElementById('wheel-canvas');
+        const bgCtx = bgCanvas.getContext('2d', { alpha: false });
+        const wCtx = wheelCanvas.getContext('2d');
+
+        // Animation States
+        let isPresentationMode = false;
+        let isSpinning = false;
+        let isPopping = false;
+        let isShatterDelay = false;
+        let isShattering = false;
+        let isInterpolating = false;
+
+        let spinStartTime = 0;
+        let popStartTime = 0;
+        let shatterDelayStartTime = 0;
+        let shatterStartTime = 0;
+        let interpolateStartTime = 0;
+
+        let spinDuration = 0, spinStartAngle = 0, spinTotalAngle = 0;
+        let currentRotation = 0, activeSegmentIndex = -1, pulseActive = 0, winScale = 1.0;
+        
+        let wheelSegments = [], particles = [], doodles = [], shatters = [], prevSegmentsState = [];
+
+        let width, height, targetCenterX, targetCenterY, targetRadius;
+        let centerX, centerY, outerRadius;
+        let pRatio = window.devicePixelRatio || 1;
+        const TWO_PI = Math.PI * 2;
+
+        const easeOutQuart = t => 1 - (--t) * t * t * t;
+        const easeInOutQuad = t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+        function saveTeams() {
+            localStorage.setItem('roulette_teams', JSON.stringify(teams));
+        }
+
+        function updateUI(preventReset = false) {
+            teamList.innerHTML = '';
+            teams.forEach((team, idx) => {
+                const el = document.createElement('div');
+                el.className = 'team-item';
+                el.innerHTML = `<span class="team-name">${team}</span><button class="remove-btn" data-index="${idx}">✕</button>`;
+                teamList.appendChild(el);
+            });
+
+            if (teams.length === 0) {
+                goToWheelBtn.disabled = true;
+                goToWheelBtn.textContent = 'ADD TEAMS';
+                spinBtn.disabled = true;
+                spinBtn.textContent = 'TOURNAMENT COMPLETE';
+                spinBtn.style.animation = 'none';
+            } else {
+                goToWheelBtn.disabled = false;
+                goToWheelBtn.textContent = 'GO TO WHEEL';
+                spinBtn.disabled = false;
+                spinBtn.textContent = 'SPIN';
+            }
+            
+            saveTeams();
+            
+            if (!preventReset && !isSpinning && !isShattering && !isInterpolating && !isPopping && !isShatterDelay) {
+                initWheelSegments();
+            }
+        }
+
+        function initWheelSegments() {
+            if (teams.length === 0) {
+                wheelSegments = [];
+                return;
+            }
+            wheelSegments = teams.map((team, i) => {
+                let baseAngle = TWO_PI / teams.length;
+                let offsetAngle = baseAngle * i;
+                return {
+                    text: team, baseAngle, offsetAngle,
+                    currentBaseAngle: baseAngle, currentOffsetAngle: offsetAngle,
+                    color: palette[i % palette.length], originalIndex: i
+                };
+            });
+        }
+
+        function enterPresentationMode() {
+            isPresentationMode = true;
+
+            const tRect = mainTitle.getBoundingClientRect();
+            const sRect = mainSubtitle.getBoundingClientRect();
+
+            document.body.appendChild(mainTitle);
+            document.body.appendChild(mainSubtitle);
+
+            mainTitle.style.position = 'fixed';
+            mainTitle.style.margin = '0';
+            mainTitle.style.left = tRect.left + 'px';
+            mainTitle.style.top = tRect.top + 'px';
+            mainTitle.style.width = 'max-content';
+            mainTitle.style.zIndex = '100';
+            
+            mainSubtitle.style.position = 'fixed';
+            mainSubtitle.style.margin = '0';
+            mainSubtitle.style.left = sRect.left + 'px';
+            mainSubtitle.style.top = sRect.top + 'px';
+            mainSubtitle.style.width = 'max-content';
+            mainSubtitle.style.zIndex = '100';
+
+            leftPanel.style.transition = 'opacity 0.6s ease';
+            leftPanel.style.opacity = '0';
+            leftPanel.style.pointerEvents = 'none';
+
+            void mainTitle.offsetWidth;
+
+            const duration = '0.8s';
+            const easing = 'cubic-bezier(0.34, 1.56, 0.64, 1)'; 
+            
+            mainTitle.style.transition = `all ${duration} ${easing}`;
+            mainTitle.style.left = '50%';
+            mainTitle.style.top = '4%';
+            mainTitle.style.transform = 'translateX(-50%)';
+            mainTitle.style.textAlign = 'center';
+            mainTitle.style.whiteSpace = 'nowrap';
+            mainTitle.style.textShadow = '0 0 25px rgba(209, 159, 255, 0.8)';
+            
+            mainSubtitle.style.transition = `all ${duration} ${easing}`;
+            mainSubtitle.style.left = '50%';
+            mainSubtitle.style.transform = 'translateX(-50%)';
+            mainSubtitle.style.textAlign = 'center';
+            mainSubtitle.style.whiteSpace = 'nowrap';
+            
+            spinBtn.classList.add('visible');
+
+            // Hardcode resize eval logic immediately to trigger glides
+            resize(); 
+        }
+
+        function getWheelRadius(effWidth, effHeight) {
+            const size = Math.min(effWidth, effHeight);
+            return Math.min(600, Math.floor(size * 0.38));
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            
+            let firstRun = (centerX === undefined);
+
+            // Directly couple exact canvas dimensions to eliminate clipping or blur
+            bgCanvas.width = width * pRatio;
+            bgCanvas.height = height * pRatio;
+            bgCanvas.style.width = width + 'px';
+            bgCanvas.style.height = height + 'px';
+
+            wheelCanvas.width = width * pRatio;
+            wheelCanvas.height = height * pRatio;
+            wheelCanvas.style.width = width + 'px';
+            wheelCanvas.style.height = height + 'px';
+
+            let lpWidth = 0, lpHeight = 0;
+            if (!isPresentationMode && leftPanel) {
+                if (width <= 768) lpHeight = leftPanel.offsetHeight;
+                else lpWidth = leftPanel.offsetWidth;
+            }
+            
+            let availableWidth = width - lpWidth;
+            let availableHeight = height - lpHeight;
+            
+            targetCenterX = lpWidth + availableWidth / 2;
+            targetCenterY = isPresentationMode ? (height * 0.54) : (lpHeight + availableHeight / 2);
+            
+            let effW = isPresentationMode ? width : availableWidth;
+            let effH = isPresentationMode ? height : availableHeight;
+            targetRadius = getWheelRadius(effW, effH);
+
+            if (firstRun) {
+                centerX = targetCenterX;
+                centerY = targetCenterY;
+                outerRadius = targetRadius;
+            }
+
+            if (isPresentationMode) {
+                if (width <= 768) {
+                    mainTitle.style.fontSize = '1.6rem';
+                    mainSubtitle.style.top = 'calc(4% + 35px)';
+                    mainSubtitle.style.fontSize = '0.8rem';
+                } else {
+                    mainTitle.style.fontSize = '2.5rem';
+                    mainSubtitle.style.top = 'calc(4% + 55px)';
+                    mainSubtitle.style.fontSize = '0.95rem';
+                }
+            }
+        }
+
+        // Apply strict DB resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(resize, 150);
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * window.innerWidth; 
+                this.y = Math.random() * window.innerHeight;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.radius = Math.random() * 2 + 0.5;
+            }
+            update(w, h) {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0) this.x = w;
+                if (this.x > w) this.x = 0;
+                if (this.y < 0) this.y = h;
+                if (this.y > h) this.y = 0;
+            }
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, TWO_PI);
+                ctx.fillStyle = 'rgba(209, 159, 255, 0.35)';
+                ctx.fill();
+            }
+        }
+
+        for(let i=0; i<80; i++) particles.push(new Particle());
+        for(let i=0; i<6; i++) {
+            doodles.push({
+                type: Math.floor(Math.random() * 4), x: Math.random(), y: Math.random(),
+                size: Math.random() * 30 + 20, angle: Math.random() * TWO_PI
+            });
+        }
+
+        function drawStaticDoodles(ctx) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(209, 159, 255, 0.08)';
+            ctx.fillStyle = 'rgba(209, 159, 255, 0.08)';
+            ctx.lineWidth = 2;
+            doodles.forEach(d => {
+                ctx.save();
+                ctx.translate(d.x * width, d.y * height);
+                ctx.rotate(d.angle);
+                ctx.beginPath();
+                if (d.type === 0) { 
+                    for(let i=0; i<6; i++) ctx.lineTo(Math.cos((TWO_PI/6)*i)*d.size, Math.sin((TWO_PI/6)*i)*d.size);
+                    ctx.closePath(); ctx.stroke();
+                } else if (d.type === 1) { 
+                    for(let i=0; i<8; i++) { ctx.moveTo(0,0); ctx.lineTo(Math.cos((TWO_PI/8)*i)*d.size, Math.sin((TWO_PI/8)*i)*d.size); }
+                    ctx.stroke();
+                } else if (d.type === 2) { 
+                    ctx.moveTo(-d.size*0.3, -d.size); ctx.lineTo(d.size*0.3, -d.size); ctx.lineTo(d.size*0.3, -d.size*0.5);
+                    ctx.lineTo(d.size*0.8, d.size*0.8); ctx.arcTo(d.size*0.8, d.size, -d.size*0.8, d.size, d.size*0.4);
+                    ctx.lineTo(-d.size*0.8, d.size*0.8); ctx.lineTo(-d.size*0.3, -d.size*0.5);
+                    ctx.closePath(); ctx.stroke();
+                } else { 
+                    ctx.moveTo(-d.size, -d.size/2); ctx.quadraticCurveTo(0, -d.size, d.size, -d.size/2);
+                    ctx.moveTo(-d.size, d.size/2); ctx.quadraticCurveTo(0, d.size, d.size, d.size/2);
+                    ctx.moveTo(0, -d.size*0.75); ctx.lineTo(0, d.size*0.75); ctx.stroke();
+                }
+                ctx.restore();
+            });
+            ctx.restore();
+        }
+
+        function updateWheelLogic(now) {
+            if (isSpinning) {
+                let t = Math.min(1, (now - spinStartTime) / spinDuration);
+                currentRotation = spinStartAngle + easeOutQuart(t) * spinTotalAngle;
+                if (t >= 1) { isSpinning = false; isPopping = true; popStartTime = now; }
+            } 
+            else if (isPopping) {
+                let t = Math.min(1, (now - popStartTime) / 400); 
+                winScale = 1.0 + (1 - Math.pow(1 - t, 3)) * 0.08;
+                if (t >= 1) { isPopping = false; winScale = 1.08; showModal(); }
+            }
+            else if (isShatterDelay && (now - shatterDelayStartTime > 300)) {
+                currentRotation = currentRotation % TWO_PI;
+                if (currentRotation < 0) currentRotation += TWO_PI;
+                isShatterDelay = false; isShattering = true; shatterStartTime = now; winScale = 1.0;
+                generateShatters();
+            }
+            else if (isShattering) {
+                let t = Math.min(1, Math.max(0, (now - shatterStartTime) / 600));
+                if (t >= 1) { isShattering = false; startInterpolation(activeSegmentIndex); }
+            }
+            else if (isInterpolating) {
+                let t = Math.min(1, (now - interpolateStartTime) / 800);
+                let ease = easeInOutQuad(t);
+                wheelSegments.forEach((seg, i) => {
+                    let prev = prevSegmentsState[i];
+                    seg.currentOffsetAngle = prev.offsetAngle + (seg.offsetAngle - prev.offsetAngle) * ease;
+                    seg.currentBaseAngle = prev.baseAngle + (seg.baseAngle - prev.baseAngle) * ease;
+                });
+                if (t >= 1) { isInterpolating = false; updateUI(true); }
+            }
+        }
+
+        function drawSegmentGeometry(ctx, seg, startAng, endAng, highlight, isPopped) {
+            ctx.save();
+            ctx.beginPath(); ctx.moveTo(0, 0);
+            let currentOuter = isPopped ? outerRadius * 1.06 : outerRadius;
+            ctx.arc(0, 0, currentOuter, startAng, endAng); ctx.closePath();
+            
+            ctx.fillStyle = seg.color.bg; ctx.fill();
+            if (highlight) { ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'; ctx.fill(); }
+            ctx.lineWidth = 1; ctx.strokeStyle = '#180f2a'; ctx.stroke();
+
+            ctx.save();
+            let midAngle = startAng + (endAng - startAng) / 2;
+            ctx.rotate(midAngle);
+            ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = seg.color.text;
+            
+            let sweep = Math.abs(endAng - startAng);
+            ctx.font = `900 ${sweep >= Math.PI ? 32 : Math.max(12, Math.min(32, currentOuter * Math.sin(sweep / 2) * 0.8))}px Satoshi, sans-serif`;
+            
+            ctx.beginPath(); 
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, currentOuter - 10, -(endAng - startAng)/2, (endAng - startAng)/2); 
+            ctx.clip();
+            ctx.fillText(seg.text, currentOuter - 30, 0);
+            ctx.restore(); ctx.restore();
+        }
+
+        function drawWheelDecorations(ctx) {
+            ctx.beginPath(); ctx.arc(0, 0, outerRadius, 0, TWO_PI);
+            ctx.lineWidth = 16; ctx.strokeStyle = '#d19fff'; ctx.stroke();
+            
+            for(let i=0; i<4; i++) {
+                ctx.save(); ctx.rotate(i * Math.PI / 2); ctx.beginPath();
+                ctx.moveTo(outerRadius - 10, 0); ctx.lineTo(outerRadius, -10); ctx.lineTo(outerRadius + 10, 0); ctx.lineTo(outerRadius, 10); ctx.closePath();
+                ctx.fillStyle = '#180f2a'; ctx.fill(); ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+            }
+
+            ctx.beginPath(); ctx.arc(0, 0, outerRadius * 0.15, 0, TWO_PI);
+            ctx.fillStyle = '#180f2a'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#d19fff'; ctx.stroke();
+            
+            ctx.beginPath();
+            for(let i=0; i<8; i++) {
+                ctx.moveTo(0,0); ctx.lineTo(Math.cos(i*Math.PI/4)*outerRadius*0.08, Math.sin(i*Math.PI/4)*outerRadius*0.08);
+            }
+            ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        function drawPointer(ctx, isTick) {
+            ctx.save();
+            ctx.setTransform(pRatio, 0, 0, pRatio, centerX * pRatio, (centerY - outerRadius - 10) * pRatio);
+            ctx.shadowBlur = isTick ? 25 : 15; ctx.shadowColor = '#d19fff';
+            ctx.beginPath(); ctx.moveTo(-15, -20); ctx.lineTo(15, -20); ctx.lineTo(0, 5); ctx.closePath();
+            ctx.fillStyle = isTick ? '#fff' : '#d19fff'; ctx.fill();
+            ctx.restore();
+        }
+
+        function drawWheelImmediate() {
+            if (wheelSegments.length === 0) return;
+
+            let activeIdx = -1;
+            for (let i = 0; i < wheelSegments.length; i++) {
+                let start = (currentRotation + wheelSegments[i].currentOffsetAngle) % TWO_PI;
+                if (start < 0) start += TWO_PI;
+                let end = (start + wheelSegments[i].currentBaseAngle) % TWO_PI;
+                let target = Math.PI * 1.5;
+                if ((target >= start && target <= end) || (target <= end && end < start) || (target >= start && end < start)) {
+                    activeIdx = i; break;
+                }
+            }
+            
+            if (activeIdx !== activeSegmentIndex && isSpinning) pulseActive = 5;
+            activeSegmentIndex = activeIdx;
+
+            wCtx.save();
+            wCtx.setTransform(pRatio, 0, 0, pRatio, centerX * pRatio, centerY * pRatio);
+            
+            for (let i = 0; i < wheelSegments.length; i++) {
+                if (isShattering && i === activeSegmentIndex) continue;
+                let seg = wheelSegments[i];
+                let isWin = (!isSpinning && !isInterpolating && i === activeSegmentIndex && winScale > 1.0);
+                drawSegmentGeometry(wCtx, seg, currentRotation + seg.currentOffsetAngle, currentRotation + seg.currentOffsetAngle + seg.currentBaseAngle, 
+                    ((isSpinning || isPopping || isWin) && i === activeSegmentIndex), (isWin && !isShattering && !isShatterDelay));
+            }
+            
+            if (isShattering) {
+                let t = Math.min(1, Math.max(0, (performance.now() - shatterStartTime) / 600));
+                wCtx.save();
+                shatters.forEach(p => { p.x += p.vx; p.y += p.vy; wCtx.globalAlpha = 1 - t; wCtx.fillStyle = p.color; wCtx.fillRect(p.x, p.y, p.size, p.size); });
+                wCtx.restore();
+            }
+            
+            drawWheelDecorations(wCtx); wCtx.restore();
+            drawPointer(wCtx, pulseActive > 0);
+            if (pulseActive > 0) pulseActive--;
+        }
+
+        let unifyLast = 0;
+        function gameLoop(now) {
+            requestAnimationFrame(gameLoop);
+            if (!unifyLast) unifyLast = now;
+            let dt = now - unifyLast; unifyLast = now;
+
+            let damping = Math.min(1.0, 0.04 * (dt / 16.666));
+            if (Math.abs(targetCenterX - centerX) > 0.1) centerX += (targetCenterX - centerX) * damping;
+            if (Math.abs(targetCenterY - centerY) > 0.1) centerY += (targetCenterY - centerY) * damping;
+            if (Math.abs(targetRadius - outerRadius) > 0.1) outerRadius += (targetRadius - outerRadius) * damping;
+
+            bgCtx.setTransform(1, 0, 0, 1, 0, 0); bgCtx.fillStyle = '#180f2a'; bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+            bgCtx.setTransform(pRatio, 0, 0, pRatio, 0, 0); drawStaticDoodles(bgCtx);
+            
+            bgCtx.lineWidth = 1;
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update(width, height); particles[i].draw(bgCtx);
+                for (let j = i + 1; j < particles.length; j++) {
+                    let dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y;
+                    let distSq = dx * dx + dy * dy;
+                    if (distSq < 14400) {
+                        bgCtx.beginPath(); bgCtx.moveTo(particles[i].x, particles[i].y); bgCtx.lineTo(particles[j].x, particles[j].y);
+                        bgCtx.strokeStyle = `rgba(209, 159, 255, ${(1 - Math.sqrt(distSq) / 120) * 0.2})`; bgCtx.stroke();
+                    }
+                }
+            }
+
+            updateWheelLogic(now);
+            wCtx.setTransform(1, 0, 0, 1, 0, 0); wCtx.clearRect(0, 0, wheelCanvas.width, wheelCanvas.height);
+            drawWheelImmediate();
+        }
+        
+        goToWheelBtn.addEventListener('click', () => { if (teams.length > 0 && !isPresentationMode) enterPresentationMode(); });
+
+        spinBtn.addEventListener('click', () => {
+            if (teams.length === 0 || isSpinning || isShattering || isInterpolating || isPopping || isShatterDelay) return;
+            
+            let winIdx = Math.floor(Math.random() * wheelSegments.length);
+            let targetLocalCenter = wheelSegments[winIdx].offsetAngle + wheelSegments[winIdx].baseAngle / 2;
+            let targetEndRotation = (Math.PI * 1.5) - targetLocalCenter;
+            
+            targetEndRotation += (Math.random() - 0.5) * (wheelSegments[winIdx].baseAngle - wheelSegments[winIdx].baseAngle * 0.2);
+            while (targetEndRotation <= currentRotation) targetEndRotation += TWO_PI;
+            
+            spinTotalAngle = (targetEndRotation - currentRotation) + (Math.floor(Math.random() * 6) + 12) * TWO_PI;
+            spinDuration = 6000 + Math.random() * 2000;
+            spinStartAngle = currentRotation; spinStartTime = performance.now();
+            isSpinning = true; winScale = 1.0;
+        });
+
+        function showModal() {
+            winnerNameEl.textContent = wheelSegments[activeSegmentIndex].text; winModal.classList.add('active');
+        }
+
+        closeModalBtn.addEventListener('click', () => {
+            winModal.classList.remove('active'); isShatterDelay = true; shatterDelayStartTime = performance.now();
+        });
+
+        function generateShatters() {
+            shatters = [];
+            let wS = wheelSegments[activeSegmentIndex], sa = currentRotation + wS.currentOffsetAngle, ea = sa + wS.currentBaseAngle;
+            for(let i=0; i<150; i++) {
+                let a = sa + Math.random() * (ea - sa), r = Math.random() * outerRadius;
+                shatters.push({ x: Math.cos(a)*r, y: Math.sin(a)*r, vx: Math.cos(a)*(Math.random()*4+2) + (Math.random()-0.5)*2,
+                    vy: Math.sin(a)*(Math.random()*4+2) + (Math.random()-0.5)*2, size: Math.random()*6+2,
+                    color: Math.random() > 0.5 ? wS.color.bg : wS.color.text });
+            }
+        }
+
+        function startInterpolation(rmIdx) {
+            let removedTeamName = wheelSegments[rmIdx].text;
+            let idx = teams.indexOf(removedTeamName);
+            if (idx > -1) { teams.splice(idx, 1); saveTeams(); }
+            
+            if (teams.length === 0) {
+                wheelSegments = []; updateUI(true); spinBtn.textContent = 'TOURNAMENT COMPLETE'; spinBtn.disabled = true; return;
+            }
+
+            let newSegments = teams.map((team, i) => {
+                let baseA = TWO_PI / teams.length;
+                return { text: team, baseAngle: baseA, offsetAngle: baseA * i, color: palette[i % palette.length], originalIndex: i };
+            });
+            
+            prevSegmentsState = [];
+            for (let i = 0; i < wheelSegments.length; i++) {
+                if (i === rmIdx) continue;
+                prevSegmentsState.push({ offsetAngle: wheelSegments[i].currentOffsetAngle, baseAngle: wheelSegments[i].currentBaseAngle });
+            }
+
+            for (let j = 0; j < newSegments.length; j++) {
+                let diff = newSegments[j].offsetAngle - prevSegmentsState[j].offsetAngle;
+                while(diff < -Math.PI) diff += TWO_PI; while(diff > Math.PI) diff -= TWO_PI;
+                newSegments[j].offsetAngle = prevSegmentsState[j].offsetAngle + diff;
+                newSegments[j].currentOffsetAngle = prevSegmentsState[j].offsetAngle;
+                newSegments[j].currentBaseAngle = prevSegmentsState[j].baseAngle;
+            }
+            wheelSegments = newSegments; isInterpolating = true; interpolateStartTime = performance.now();
+        }
+
+        addTeamBtn.addEventListener('click', () => { if (teamInput.value.trim()) { teams.push(teamInput.value.trim()); teamInput.value = ''; updateUI(); } });
+        teamInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTeamBtn.click(); });
+        teamList.addEventListener('click', (e) => { if (e.target.classList.contains('remove-btn')) { teams.splice(parseInt(e.target.getAttribute('data-index')), 1); updateUI(); } });
+
+        updateUI(); resize(); requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
